@@ -15,7 +15,7 @@ double radians_to_degrees(double radians) {
 
 bool valid_location(double latitude, double longitude) {
     return latitude > -90 && latitude <= 90
-        && longitude > 0 && longitude <= 360;
+        && longitude > -180 && longitude <= 180;
 }
 
 double __sin_sqr_delta(double x1, double x2) {
