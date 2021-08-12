@@ -39,7 +39,6 @@ void ackermann(int m, int n, struct ack_state *state) {
         ackermann(m-1, state->value, state);
     }
     state->current_depth--;
-    // return state;
 }
 
 int main(int argc, char const *argv[])
