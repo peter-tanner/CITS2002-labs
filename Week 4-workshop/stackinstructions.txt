@@ -1,0 +1,9 @@
+push  7
+push  3
+push  2
+subtract
+multiply
+push  5
+push  1
+add
+add
