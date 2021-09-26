@@ -4,5 +4,7 @@
 
 *.out
 .vscode/
+.gdb_history
 
 concordance/
+etc/
