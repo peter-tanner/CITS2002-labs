@@ -45,27 +45,52 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <getopt.h>
 
-void counter_stats(FILE *file, int *lines, int *words, int *characters)
+#define OPTIONS "clLw"
+
+typedef struct {
+    int count;
+    bool print;
+} WC_STAT;
+
+typedef struct {
+    WC_STAT lines;
+    WC_STAT words;
+    WC_STAT characters;
+    WC_STAT max_characters;
+} WC_STATS;
+
+// ACTUAL COUNTING HERE.
+void counter_stats(FILE *file, WC_STATS *stats)
 {
-    char buffer[BUFSIZ];
     // PROCESS IN CHUNKS
+    char buffer[BUFSIZ];
+
     bool word = false;
+    int line_characters = 0;
+
     while ( fgets(buffer, BUFSIZ, file) != NULL ) {
         char *c = &buffer[0];
         while ( *c != '\0' ) {
-            // COUNT WORDS
+            // COUNT WORDS.
             if (word && isspace(*c)) {
-                (*words)++;
+                stats->words.count++;
                 word = false;
             } else if (!word) {
                 word = true;
             }
-            // COUNT CHARACTERS
-            (*characters)++;
-            // COUNT NEWLINES
+            // COUNT CHARACTERS.
+            stats->characters.count++;
+            line_characters++;
+            // COUNT NEWLINES.
             if ( *c == '\n' ) {
-                (*lines)++;
+                if (line_characters > stats->max_characters.count) {
+                    // EXCLUDES NEWLINE IN COUNT (-1).
+                    stats->max_characters.count = line_characters - 1;
+                }
+                stats->lines.count++;
+                line_characters = 0;
             }
             c++;
         }
@@ -73,7 +98,7 @@ void counter_stats(FILE *file, int *lines, int *words, int *characters)
 }
 
 // NUMBER OF LINES IN A FILE.
-void counter(char *path, int *lines, int *words, int *characters)
+void counter(char *path, WC_STATS *stats)
 {
     FILE *file;
     if (path == NULL) {
@@ -83,28 +108,70 @@ void counter(char *path, int *lines, int *words, int *characters)
     }
     
     if (file != NULL) {
-        counter_stats(file, lines, words, characters);
+        counter_stats(file, stats);
     } else {
         fprintf(stderr, "Error reading file.\n");
         exit(EXIT_FAILURE);
     }
+}
+
+void process_options(WC_STATS *options, int argc, char **argv, char **filename)
+{
+    int option;
+    while ( (option = getopt(argc, argv, OPTIONS)) != EOF ) {
+        switch (option) {
+        case 'c':
+            options->characters.print = true;
+            break;
+        case 'L':
+            options->max_characters.print = true;
+            break;
+        case 'l':
+            options->lines.print = true;
+            break;
+        case 'w':
+            options->words.print = true;
+            break;
+        }
+    }
+
+    // DEFAULT OPTS.
+    if (optind == 1) {
+        options->words.print        = true;
+        options->characters.print   = true;
+        options->lines.print        = true;
+    }
     
+    // getopt MOVES THE NON-OPTION ARGUMENTS (FILENAME) TO THE END OF ARGV.
+    if (optind < argc) {
+        *filename = argv[optind];   // ONLY USE FIRST FILENAME.
+    }
+    
+}
+
+void print_stat(WC_STAT stat, char *fmt_str)
+{
+    if (stat.print) {
+        printf(fmt_str, stat.count);
+    }
+}
+
+void print_stats(WC_STATS *stats)
+{
+    print_stat(stats->characters,       "CHARACTERS     %d\n");
+    print_stat(stats->words,            "WORDS          %d\n");
+    print_stat(stats->lines,            "LINES          %d\n");
+    print_stat(stats->max_characters,   "LINE_MAX_CHARS %d\n");
 }
 
 int main(int argc, char *argv[])
 {
-    char *file = argv[1];
-    // CHECK IF WE ARE ACCEPTING INPUT FROM A PIPE.
-    if (argc > 2) {
-        fprintf(stderr, "Usage: mywc [FILE]\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    int lines;
-    int words;
-    int characters;
-    counter(argv[1], &lines, &words, &characters);
-    printf( "LINES %d, WORDS %d, CHARACTERS %d\n",
-            lines, words, characters  );
+    WC_STATS *stats = malloc(sizeof(WC_STATS));
+    char *file;
+
+    process_options(stats, argc, argv, &file); printf("%s\n", file);
+    counter(file, stats);
+    print_stats(stats);
+
     return 0;
 }
