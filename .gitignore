@@ -2,7 +2,9 @@
 !*.*
 !*/
 
+*.o
 *.out
+*.zip
 .vscode/
 .gdb_history
 
